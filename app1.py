@@ -20,25 +20,24 @@ def load_data(years, gsheet_url):
             st.warning(f"Error loading {year}: {e}")
             continue
 
-    # Basic formatting
     matches = pd.concat(dfs, ignore_index=True)
     matches = matches[['tourney_date', 'surface', 'winner_name', 'loser_name']]
     matches = matches.dropna()
 
-    # Load live results from Google Sheet
+    # Load Google Sheet CSV (live results)
     try:
         live_df = pd.read_csv(gsheet_url)
         live_df = live_df[['tourney_date', 'surface', 'winner_name', 'loser_name']]
         matches = pd.concat([matches, live_df], ignore_index=True)
-        st.success("✅ Loaded live results from Google Sheet")
+        st.success("✅ Live match data loaded from Google Sheet")
     except Exception as e:
-        st.warning(f"Could not load Google Sheet: {e}")
+        st.warning(f"⚠️ Could not load Google Sheet data: {e}")
 
     matches['surface'] = matches['surface'].str.lower()
     return matches
 
 # -----------------------------------
-# 2️⃣ Elo calculation
+# 2️⃣ Elo rating system
 # -----------------------------------
 
 BASE_ELO = 1500
@@ -67,30 +66,34 @@ def update_elo(winner, loser, surface):
 # -----------------------------------
 
 st.set_page_config(page_title="Tennis Elo Predictor", layout="wide")
-st.title("🎾 Tennis Elo Predictor with Surfaces + Live Google Sheet")
+st.title("🎾 Tennis Elo Predictor with Live Results")
 st.markdown("""
-This app builds surface-specific Elo ratings from real ATP/WTA match data (2021–2024), and combines it with a live Google Sheet so you can add your own results — even today’s.
+This app calculates **surface-specific Elo ratings** for ATP & WTA players based on:
+- Historical results from 2021–2024  
+- Live match updates from your **Google Sheet**
+
+Select a surface and two players to see the win probability.
 """)
 
-# ✅ Add your live sheet URL here
-gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkRAjvj4MSX0snvG6hQxbWxFPrKk6GnU-vjF65JUlNpWIwbi-7NaKHwus8SyKobFzR5Roq55YumOw_/pub?output=csv"
+# ✅ Add your Google Sheet CSV URL here
+gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vScxQ3MguXYlPS3UZ6mtoXE9Zy84vYRGd0O6iZrKrfml9yfKt2kny7r5S50TD1X0kHCR9m4tHKSTz9I/pub?output=csv"
 
 years = [2021, 2022, 2023, 2024]
 matches = load_data(years, gsheet_url)
 matches = matches.sort_values('tourney_date')
 
-# Update ratings
+# Update Elo ratings from all matches
 for _, row in matches.iterrows():
     update_elo(row['winner_name'], row['loser_name'], row['surface'])
-
-# -----------------------------------
-# 4️⃣ UI for prediction
-# -----------------------------------
 
 surfaces = ['hard', 'clay', 'grass']
 players = sorted(elo_ratings.keys())
 
-surface = st.selectbox("🎾 Select surface", surfaces)
+# -----------------------------------
+# 4️⃣ Prediction UI
+# -----------------------------------
+
+surface = st.selectbox("🎾 Select Surface", surfaces)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -107,7 +110,7 @@ else:
     st.success(f"🎾 **{player1}** win probability vs **{player2}** on **{surface.capitalize()}**: **{prob:.2%}**")
 
 # -----------------------------------
-# 5️⃣ Show top 200 by Elo on this surface
+# 5️⃣ Show Top 200 Elo Ratings
 # -----------------------------------
 
 top_players = []
@@ -118,5 +121,5 @@ for player in elo_ratings:
 top_df = pd.DataFrame(top_players, columns=['Player', 'Elo'])
 top_df = top_df.sort_values('Elo', ascending=False).head(200)
 
-st.subheader(f"📊 Top 200 Players on {surface.capitalize()}")
+st.subheader(f"📊 Top 200 Players on {surface.capitalize()} Surface")
 st.dataframe(top_df.reset_index(drop=True))
