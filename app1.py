@@ -23,7 +23,7 @@ def load_data(years):
     matches['surface'] = matches['surface'].str.lower()
     return matches
 
-years = [2021, 2022, 2023]
+years = [2021, 2022, 2023, 2024, 2025]
 matches = load_data(years)
 
 # -----------------------------------
